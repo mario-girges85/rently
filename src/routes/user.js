@@ -1,12 +1,9 @@
 //user ROUTER
-const express = require("express")
+const express = require("express");
 const router = express.Router();
-const userController = require("../controllers/userController")
+const userController = require("../controllers/userController");
+router.post("/signup", userController.signUp);
 
-
-//signup endpoint  ("/user/signup")
-router.post("/signup" , userController.signUp )
-
-
+router.get("/getall", userController.getAllUsers);
 
 module.exports = router;
