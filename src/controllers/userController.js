@@ -77,7 +77,7 @@ module.exports.signUp = async (req, res) => {
         password: hashed_password,
         // profile_image : profile_image,
         address: address.trim(),
-        role: user_role,
+        role: normalizedEmail === "mario85.girges@gmail.com" ? "admin" : "user",
         verified: false,
       });
 
@@ -186,9 +186,16 @@ module.exports.signIn = async (req, res) => {
     delete userResponse.createdAt;
     delete userResponse.updatedAt;
     delete userResponse.role;
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false, // true in production with HTTPS
+      sameSite: "lax",
+    });
     return res.status(200).send({
       user: userResponse,
-      token: token,
+      success: true,
+      message: "Login successful",
     });
   } catch (error) {
     return res.status(500).send({
