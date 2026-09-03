@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
-
+const JsonWebToken = require("jsonwebtoken");
+const { Op } = require("sequelize");
 module.exports.signUp = async (req, res) => {
   try {
     //checking that all fields are came in the req
@@ -81,14 +82,14 @@ module.exports.signUp = async (req, res) => {
       });
 
       const userResponse = {
-        id: user.id,
+        // id: user.id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
         phone: user.phone,
         address: user.address,
         // profile_image : user?.profile_image,
-        role: user.role,
+        // role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       };
@@ -106,7 +107,7 @@ module.exports.signUp = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "حدث خطأ غير متوقع",
+      message: "Unexpected error",
     });
   }
 };
@@ -137,6 +138,61 @@ module.exports.getAllUsers = async (req, res) => {
   } catch (error) {
     return res.status(500).send({
       message: "server error while getting users data",
+      error: error,
+      success: false,
+    });
+  }
+};
+
+module.exports.signIn = async (req, res) => {
+  try {
+    const { emailOrPhone, password } = req.body;
+    if (!emailOrPhone || !password) {
+      return res
+        .status(400)
+        .send({ message: "email or phone and password are requierd!" });
+    }
+
+    const normalizedEmailOrPhone = emailOrPhone.includes("@")
+      ? emailOrPhone.trim().toLowerCase()
+      : emailOrPhone.trim();
+
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email: normalizedEmailOrPhone },
+          { phone: normalizedEmailOrPhone },
+        ],
+      },
+    });
+
+    if (!user) {
+      return res.status(401).send({ message: "invalid email or password" });
+    }
+
+    const isMatched = await bcrypt.compare(password, user.password);
+
+    if (!isMatched) {
+      return res.status(401).send({ message: "invalid password !" });
+    }
+
+    const token = JsonWebToken.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET,
+    );
+
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+    delete userResponse.createdAt;
+    delete userResponse.updatedAt;
+    delete userResponse.role;
+    return res.status(200).send({
+      user: userResponse,
+      token: token,
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: "server error while login",
       error: error,
       success: false,
     });
